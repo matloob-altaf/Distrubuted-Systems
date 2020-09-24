@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 )
 
 const bufSize = 1024
@@ -24,7 +23,6 @@ type keyValueServer struct {
 	clientActiveChan chan net.Conn
 	clientDropChan   chan net.Conn
 	clientsActive    int
-	operateMap       chan int
 }
 
 // New creates and returns (but does not start) a new KeyValueServer.
@@ -32,7 +30,7 @@ func New() KeyValueServer {
 	// TODO: implement this!
 	// return nil
 
-	server := keyValueServer{nil, make(map[net.Conn]client), false, make(chan net.Conn, 1), make(chan net.Conn, 1), 0, make(chan int, 1)}
+	server := keyValueServer{nil, make(map[net.Conn]client), false, make(chan net.Conn, 1), make(chan net.Conn, 1), 0}
 	return &server
 }
 
@@ -55,9 +53,9 @@ func (kvs *keyValueServer) StartModel1(port int) error {
 func (kvs *keyValueServer) Close() {
 	// TODO: implement this!
 	kvs.quit = true
-	for k, cl := range kvs.clients {
-		close(cl.key)
-		k.Close()
+	for conn, client := range kvs.clients {
+		close(client.keysQueue)
+		removeClient(kvs, conn)
 	}
 	kvs.listener.Close()
 	// for k := range kvstore {
@@ -95,12 +93,10 @@ func (kvs *keyValueServer) RecvPut(args *rpcs.PutArgs, reply *rpcs.PutReply) err
 }
 
 // TODO: add additional methods/functions below!
-// every client has a buffered message channel
-// check the length of it to implement 8 th
+
 type client struct {
-	conn       net.Conn
-	getRequest chan int
-	key        chan string
+	conn      net.Conn
+	keysQueue chan string
 }
 
 func acceptClients(kvs *keyValueServer) {
@@ -121,7 +117,7 @@ func handleConnections(kvs *keyValueServer) {
 	for {
 		select {
 		case conn := <-kvs.clientActiveChan:
-			kvs.clients[conn] = client{conn, make(chan int, 1), make(chan string, msgSize)}
+			kvs.clients[conn] = client{conn, make(chan string, msgSize)}
 			kvs.clientsActive++
 			go readFromClient(kvs, conn)
 			go writeToClient(kvs, conn)
@@ -131,27 +127,6 @@ func handleConnections(kvs *keyValueServer) {
 			if kvs.quit == true {
 				return
 			}
-		}
-	}
-}
-
-// all clients share one put channel, but can read simultaneously
-// op: 0, put; 1, get
-func processRequest(kvs *keyValueServer, conn net.Conn, msg [][]byte, op int) {
-
-	key := string(bytes.TrimSuffix(msg[1][:], []byte("\n")))
-	switch op {
-	case 0:
-		// value := string(bytes.TrimSuffix(msg[2][:], []byte("\n")))
-		// value = extractKeyOrValue(value)
-
-		<-kvs.operateMap
-		put(key, msg[2])
-	case 1:
-		<-kvs.clients[conn].getRequest
-		if op == 1 && len(kvs.clients[conn].key) < 500 {
-
-			kvs.clients[conn].key <- key
 		}
 	}
 }
@@ -169,14 +144,10 @@ func readFromClient(kvs *keyValueServer, conn net.Conn) {
 		// parse
 		msg := bytes.Split(buf, []byte(","))
 
-		// 0, put; 1, get
-		op := 0
-		method := string(msg[0][:])
-		switch method {
-		case "put":
-			kvs.operateMap <- 1
-		case "get":
-			kvs.clients[conn].getRequest <- 1
+		// 0 for put, 1 for get
+
+		op := 0 //set it of for put and then update if requested operation is get
+		if string(msg[0]) == "get" {
 			op = 1
 		}
 		processRequest(kvs, conn, msg, op)
@@ -184,30 +155,37 @@ func readFromClient(kvs *keyValueServer, conn net.Conn) {
 	}
 }
 
+// all clients share one put channel, but can read simultaneously
+// op: 0 for put, 1 for get
+func processRequest(kvs *keyValueServer, conn net.Conn, msg [][]byte, op int) {
+
+	key := string(bytes.TrimSuffix(msg[1][:], []byte("\n")))
+	switch op {
+	case 0:
+		put(key, msg[2])
+	case 1:
+		if len(kvs.clients[conn].keysQueue) < 500 {
+
+			kvs.clients[conn].keysQueue <- key
+		}
+	}
+}
+
 func writeToClient(kvs *keyValueServer, conn net.Conn) {
 	// only stop when disconnected or kvs.clients[conn] closed
-	key := <-kvs.clients[conn].key
-	value := get(key)
-	msg := []byte(key + ",")
-	msg = append(msg, value...)
+	key := <-kvs.clients[conn].keysQueue
+	msg := append([]byte(key+","), get(key)...)
 	for client := range kvs.clients {
-		//fmt.Println(msg)
+		// fmt.Println(string(msg))
+		// _, err := conn.Write(msg)
 		_, err := client.Write(msg)
 		if err != nil {
 			if kvs.quit == false {
-				kvs.clientDropChan <- conn
+				kvs.clientDropChan <- client
 			}
 			return
 		}
 	}
-
-}
-func extractKeyOrValue(key string) string {
-	splitedArray := strings.Split(key, "_")
-	if splitedArray[0] == "key" {
-		return (splitedArray[1] + splitedArray[2])
-	}
-	return splitedArray[1]
 
 }
 func removeClient(kvs *keyValueServer, conn net.Conn) {
