@@ -11,39 +11,34 @@ import (
 	"strconv"
 )
 
-const bufSize = 1024
-const msgSize = 500
+// maximum size of buffer to maintain for slow connections
+const msgBufferSize = 500
 
 type keyValueServer struct {
 	// TODO: implement this!
-	listener net.Listener
-
-	clients          map[net.Conn]client
-	quit             bool
-	clientActiveChan chan net.Conn
-	clientDropChan   chan net.Conn
-	clientsActive    int
+	listener           net.Listener
+	clients            map[net.Conn]chan []byte
+	quit               bool
+	clientActiveChan   chan net.Conn
+	clientDropChan     chan net.Conn
+	clientsActiveCount int
 }
 
 // New creates and returns (but does not start) a new KeyValueServer.
 func New() KeyValueServer {
 	// TODO: implement this!
-	// return nil
-
-	server := keyValueServer{nil, make(map[net.Conn]client), false, make(chan net.Conn, 1), make(chan net.Conn, 1), 0}
+	server := keyValueServer{nil, make(map[net.Conn]chan []byte), false, make(chan net.Conn, 1), make(chan net.Conn, 1), 0}
 	return &server
 }
 
 func (kvs *keyValueServer) StartModel1(port int) error {
 	// TODO: implement this!
-	// return nil
-
-	ln, err := net.Listen("tcp", "localhost:"+strconv.Itoa(port))
+	listener, err := net.Listen("tcp", "localhost:"+strconv.Itoa(port))
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
-	kvs.listener = ln
+	kvs.listener = listener
 	initDB()
 	go acceptClients(kvs)
 	go handleConnections(kvs)
@@ -53,19 +48,15 @@ func (kvs *keyValueServer) StartModel1(port int) error {
 func (kvs *keyValueServer) Close() {
 	// TODO: implement this!
 	kvs.quit = true
-	for conn, client := range kvs.clients {
-		close(client.keysQueue)
+	for conn := range kvs.clients {
 		removeClient(kvs, conn)
 	}
 	kvs.listener.Close()
-	// for k := range kvstore {
-	// 	clear(k)
-	// }
 }
 
 func (kvs *keyValueServer) Count() int {
 	// TODO: implement this!
-	return kvs.clientsActive
+	return kvs.clientsActiveCount
 }
 
 func (kvs *keyValueServer) StartModel2(port int) error {
@@ -94,11 +85,6 @@ func (kvs *keyValueServer) RecvPut(args *rpcs.PutArgs, reply *rpcs.PutReply) err
 
 // TODO: add additional methods/functions below!
 
-type client struct {
-	conn      net.Conn
-	keysQueue chan string
-}
-
 func acceptClients(kvs *keyValueServer) {
 	for {
 		conn, err := kvs.listener.Accept()
@@ -117,8 +103,8 @@ func handleConnections(kvs *keyValueServer) {
 	for {
 		select {
 		case conn := <-kvs.clientActiveChan:
-			kvs.clients[conn] = client{conn, make(chan string, msgSize)}
-			kvs.clientsActive++
+			kvs.clients[conn] = make(chan []byte, msgBufferSize)
+			kvs.clientsActiveCount++
 			go readFromClient(kvs, conn)
 			go writeToClient(kvs, conn)
 		case conn := <-kvs.clientDropChan:
@@ -132,64 +118,52 @@ func handleConnections(kvs *keyValueServer) {
 }
 
 func readFromClient(kvs *keyValueServer, conn net.Conn) {
+	clientReader := bufio.NewReader(conn)
 	for {
-
-		str, err := bufio.NewReader(conn).ReadString('\n')
-		// fmt.Println(str)
-		buf := []byte(str)
+		str, err := clientReader.ReadString('\n')
+		buffer := []byte(str)
 		if err != nil {
 			kvs.clientDropChan <- conn
 			return
 		}
-		// parse
-		msg := bytes.Split(buf, []byte(","))
-
-		// 0 for put, 1 for get
-
-		op := 0 //set it of for put and then update if requested operation is get
-		if string(msg[0]) == "get" {
-			op = 1
-		}
-		processRequest(kvs, conn, msg, op)
-
+		// Parsing: requestMsg[0] = operation, requestMsg[1] = key, (if) requestMsg[2] = value
+		requestMsg := bytes.Split(buffer, []byte(","))
+		processRequest(kvs, conn, requestMsg)
 	}
 }
 
 // all clients share one put channel, but can read simultaneously
-// op: 0 for put, 1 for get
-func processRequest(kvs *keyValueServer, conn net.Conn, msg [][]byte, op int) {
-
-	key := string(bytes.TrimSuffix(msg[1][:], []byte("\n")))
-	switch op {
-	case 0:
-		put(key, msg[2])
-	case 1:
-		if len(kvs.clients[conn].keysQueue) < 500 {
-
-			kvs.clients[conn].keysQueue <- key
+func processRequest(kvs *keyValueServer, conn net.Conn, requestMsg [][]byte) {
+	key := string(bytes.TrimSuffix(requestMsg[1][:], []byte("\n")))
+	switch string(requestMsg[0][:]) {
+	case "put":
+		put(key, requestMsg[2][:]) //this lines causes error, need to fix it
+	case "get":
+		if len(kvs.clients[conn]) < msgBufferSize {
+			responseMsg := append([]byte(key+","), get(key)...)
+			kvs.clients[conn] <- responseMsg
 		}
 	}
 }
 
 func writeToClient(kvs *keyValueServer, conn net.Conn) {
-	// only stop when disconnected or kvs.clients[conn] closed
-	key := <-kvs.clients[conn].keysQueue
-	msg := append([]byte(key+","), get(key)...)
-	for client := range kvs.clients {
-		// fmt.Println(string(msg))
-		// _, err := conn.Write(msg)
-		_, err := client.Write(msg)
-		if err != nil {
-			if kvs.quit == false {
-				kvs.clientDropChan <- client
+	for {
+		responseMsg := <-kvs.clients[conn]
+		for client := range kvs.clients {
+			// time.Sleep(75 * time.Millisecond)
+			_, err := client.Write(responseMsg)
+			if err != nil {
+				if kvs.quit == false {
+					kvs.clientDropChan <- client
+				}
+				return
 			}
-			return
 		}
 	}
-
 }
+
 func removeClient(kvs *keyValueServer, conn net.Conn) {
-	conn.Close()
-	delete(kvs.clients, conn)
-	kvs.clientsActive--
+	conn.Close()              //closes connection
+	delete(kvs.clients, conn) //deletes it from map
+	kvs.clientsActiveCount--  //decrements the count
 }
