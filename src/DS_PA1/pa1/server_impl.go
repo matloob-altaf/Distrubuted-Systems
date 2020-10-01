@@ -46,8 +46,8 @@ func (kvs *keyValueServer) StartModel1(port int) error {
 	if err != nil {
 		return err
 	}
-	go kvs.acceptClients()
-	go kvs.broadcastToClients()
+	go kvs.AcceptClients()
+	go kvs.WriteToClientBuffers()
 	return nil
 }
 
@@ -57,7 +57,7 @@ func (kvs *keyValueServer) Close() {
 	clients := <-kvs.clients
 	for _, cl := range clients {
 		cl.conn.Close()
-		cl.restrictWrite <- 1
+		cl.writeChan <- 1
 	}
 	kvs.clients <- clients
 	close(kvs.responseMsgChan)
@@ -100,13 +100,13 @@ func (kvs *keyValueServer) RecvPut(args *rpcs.PutArgs, reply *rpcs.PutReply) err
 type client struct {
 	id                int
 	conn              *net.TCPConn
-	restrictRead      chan int
-	restrictWrite     chan int
+	readChan          chan int
+	writeChan         chan int
 	responseMsgBuffer chan []byte
 	server            *keyValueServer
 }
 
-func (kvs *keyValueServer) acceptClients() {
+func (kvs *keyValueServer) AcceptClients() {
 	for {
 		conn, err := kvs.listener.AcceptTCP()
 		if err != nil {
@@ -115,40 +115,40 @@ func (kvs *keyValueServer) acceptClients() {
 		cl := &client{
 			id:                kvs.currentClientID,
 			conn:              conn,
-			restrictWrite:     make(chan int, 1),
-			restrictRead:      make(chan int, 1),
+			writeChan:         make(chan int, 1),
+			readChan:          make(chan int, 1),
 			responseMsgBuffer: make(chan []byte, msgBufferSize),
 			server:            kvs}
 		kvs.currentClientID++
 		clients := <-kvs.clients
 		clients[cl.id] = cl
 		kvs.clients <- clients
-		go cl.readFromClient()
-		go cl.writeToClient()
+		go cl.ReadFromClient()
+		go cl.WriteToClient()
 	}
 }
-func (cl *client) readFromClient() {
+func (cl *client) ReadFromClient() {
 	reader := bufio.NewReader(cl.conn)
 	for {
 		msg, err := reader.ReadBytes('\n')
 		if err != nil {
-			cl.restrictRead <- 1
+			cl.readChan <- 1
 			return
 		}
-		responseFlag, responseMsg := cl.server.parse(string(msg))
+		responseFlag, responseMsg := cl.server.Parse(string(msg))
 		switch responseFlag {
 		case true:
 			select {
 			case cl.server.responseMsgChan <- []byte(responseMsg):
 				break
-			case <-cl.restrictWrite:
-				cl.restrictRead <- 1
+			case <-cl.writeChan:
+				cl.readChan <- 1
 				return
 			}
 		case false:
 			select {
-			case <-cl.restrictWrite:
-				cl.restrictRead <- 1
+			case <-cl.writeChan:
+				cl.readChan <- 1
 				return
 			default:
 				break
@@ -157,7 +157,7 @@ func (cl *client) readFromClient() {
 	}
 }
 
-func (cl *client) writeToClient() {
+func (cl *client) WriteToClient() {
 	for {
 		select {
 		case data, ok := <-cl.responseMsgBuffer:
@@ -168,7 +168,7 @@ func (cl *client) writeToClient() {
 			if err != nil {
 				return
 			}
-		case <-cl.restrictRead:
+		case <-cl.readChan:
 			clients := <-cl.server.clients
 			delete(clients, cl.id)
 			cl.server.clients <- clients
@@ -177,7 +177,7 @@ func (cl *client) writeToClient() {
 	}
 }
 
-func (kvs *keyValueServer) broadcastToClients() {
+func (kvs *keyValueServer) WriteToClientBuffers() {
 	for {
 		select {
 		case data, ok := <-kvs.responseMsgChan:
@@ -198,7 +198,7 @@ func (kvs *keyValueServer) broadcastToClients() {
 	}
 }
 
-func (kvs *keyValueServer) parse(msg string) (bool, string) {
+func (kvs *keyValueServer) Parse(msg string) (bool, string) {
 	requestMsg := strings.Split(msg, ",")
 	switch strings.EqualFold(requestMsg[0], "put") {
 	case true:

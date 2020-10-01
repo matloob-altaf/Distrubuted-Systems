@@ -16,5 +16,149 @@ All clients beginning to read...
 ========== TestBasic6: 10 client(s), 1500 get requests each ==========
 All clients beginning to write...
 All clients beginning to read...
-PASS
-ok  	DS_PA1/pa1	8.820s
+========== TestCount1: 3 rounds, up to 20 clients started/killed per round ==========
+Round 1: starting 20, killing 0
+Round 2: starting 20, killing 20
+Round 3: starting 0, killing 20
+========== TestCount3: 7 rounds, up to 50 clients started/killed per round ==========
+Round 1: starting 15, killing 0
+Round 2: starting 25, killing 5
+Round 3: starting 45, killing 25
+Round 4: starting 50, killing 35
+Round 5: starting 30, killing 1
+Round 6: starting 0, killing 15
+Round 7: starting 0, killing 50
+========== TestSlowClient1: 2 total clients, 1 slow client(s), 1000 get requests each ==========
+All clients beginning to write...
+Normal clients beginning to read...
+Slow clients beginning to read...
+========== TestSlowClient2: 6 total clients, 4 slow client(s), 1000 get requests each ==========
+All clients beginning to write...
+Normal clients beginning to read...
+Slow clients beginning to read...
+========== TestRPC1: 1 client(s), 1 get requests each ==========
+--- FAIL: TestRPC1 (0.00s)
+    server_test.go:373: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+========== TestRPC2: 1 client(s), 10000 get requests each ==========
+--- FAIL: TestRPC2 (0.00s)
+    server_test.go:373: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+========== TestRPC3: 1 client(s), 100 get requests each ==========
+Calling RecvPut RPC 100 times for 1 clients concurrently...
+Calling RecvGet RPC 100 times for 1 clients concurrently...
+--- FAIL: TestRPC3 (0.00s)
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+========== TestRPC4: 100 client(s), 100 get requests each ==========
+Calling RecvPut RPC 100 times for 100 clients concurrently...
+Calling RecvGet RPC 100 times for 100 clients concurrently...
+--- FAIL: TestRPC4 (0.02s)
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+    server_test.go:431: Error connecting to RPC-enabled server: dial tcp 127.0.0.1:3512: connect: connection refused
+panic: Fail in goroutine after TestRPC4 has completed
+
+goroutine 963 [running]:
+testing.(*common).Fail(0xc00012c400)
+	/usr/local/go/src/testing/testing.go:565 +0x1a4
+testing.(*common).Errorf(0xc00012c400, 0xa44f80, 0x2b, 0xc0001e7d80, 0x1, 0x1)
+	/usr/local/go/src/testing/testing.go:660 +0x9f
+DS_PA1/pa1.testRPCConcurrently.func1(0xdb8, 0xc00012c400, 0xc00013a800, 0x64, 0xc0002700d0, 0x34, 0x34, 0x64)
+	/home/matloob/go/src/DS_PA1/pa1/server_test.go:431 +0xf16
+created by DS_PA1/pa1.testRPCConcurrently
+	/home/matloob/go/src/DS_PA1/pa1/server_test.go:428 +0x5db
+exit status 2
+FAIL	DS_PA1/pa1	40.454s
