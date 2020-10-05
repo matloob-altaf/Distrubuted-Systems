@@ -7,6 +7,9 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"net/http"
+	"net/rpc"
+	"strconv"
 	"strings"
 )
 
@@ -73,30 +76,37 @@ func (kvs *keyValueServer) Count() int {
 
 func (kvs *keyValueServer) StartModel2(port int) error {
 	// TODO: implement this!
-	//
-	// Do not forget to call rpcs.Wrap(...) on your kvs struct before
-	// passing it to <sv>.Register(...)
-	//
-	// Wrap ensures that only the desired methods (RecvGet and RecvPut)
-	// are available for RPC access. Other KeyValueServer functions
-	// such as Close(), StartModel1(), etc. are forbidden for RPCs.
-	//
-	// Example: <sv>.Register(rpcs.Wrap(kvs))
+
+	es := new(keyValueServer)
+	ln, err := net.Listen("tcp", "localhost:"+strconv.Itoa(port))
+	if err != nil {
+		return err
+	}
+
+	rpcServer := rpc.NewServer()
+	rpcServer.Register(rpcs.Wrap(es))
+	http.DefaultServeMux = http.NewServeMux() //workaround mentioned in assignment handout
+	rpcServer.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
+
+	go http.Serve(ln, nil)
+
 	return nil
 }
 
 func (kvs *keyValueServer) RecvGet(args *rpcs.GetArgs, reply *rpcs.GetReply) error {
 	// TODO: implement this!
+	reply.Value = get(args.Key)
 	return nil
 }
 
 func (kvs *keyValueServer) RecvPut(args *rpcs.PutArgs, reply *rpcs.PutReply) error {
 	// TODO: implement this!
+	put(args.Key, args.Value)
 	return nil
 }
 
 // TODO: add additional methods/functions below!
-// TODO: add additional methods/functions below!
+
 type client struct {
 	id                int
 	conn              *net.TCPConn
@@ -127,6 +137,7 @@ func (kvs *keyValueServer) AcceptClients() {
 		go cl.WriteToClient()
 	}
 }
+
 func (cl *client) ReadFromClient() {
 	reader := bufio.NewReader(cl.conn)
 	for {
