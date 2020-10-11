@@ -23,6 +23,7 @@ type keyValueServer struct {
 	operationChan   chan int
 	responseMsgChan chan []byte
 	clients         chan map[int]*client
+	rpcOp           chan int
 }
 
 // New creates and returns (but does not start) a new KeyValueServer.
@@ -32,7 +33,8 @@ func New() KeyValueServer {
 		currentClientID: 0,
 		operationChan:   make(chan int, 1),
 		responseMsgChan: make(chan []byte, 1),
-		clients:         make(chan map[int]*client, 1)}
+		clients:         make(chan map[int]*client, 1),
+		rpcOp:           make(chan int, 1)}
 
 	server.operationChan <- 1
 	server.clients <- make(map[int]*client, 1)
@@ -77,17 +79,16 @@ func (kvs *keyValueServer) Count() int {
 func (kvs *keyValueServer) StartModel2(port int) error {
 	// TODO: implement this!
 
-	es := new(keyValueServer)
 	ln, err := net.Listen("tcp", "localhost:"+strconv.Itoa(port))
 	if err != nil {
 		return err
 	}
 
 	rpcServer := rpc.NewServer()
-	rpcServer.Register(rpcs.Wrap(es))
+	rpcServer.Register(rpcs.Wrap(kvs))
 	http.DefaultServeMux = http.NewServeMux() //workaround mentioned in assignment handout
 	rpcServer.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
-
+	kvs.rpcOp <- 1
 	go http.Serve(ln, nil)
 
 	return nil
@@ -95,13 +96,23 @@ func (kvs *keyValueServer) StartModel2(port int) error {
 
 func (kvs *keyValueServer) RecvGet(args *rpcs.GetArgs, reply *rpcs.GetReply) error {
 	// TODO: implement this!
+	_, ok := <-kvs.rpcOp
+	if !ok {
+		return nil
+	}
 	reply.Value = get(args.Key)
+	kvs.rpcOp <- 1
 	return nil
 }
 
 func (kvs *keyValueServer) RecvPut(args *rpcs.PutArgs, reply *rpcs.PutReply) error {
 	// TODO: implement this!
+	_, ok := <-kvs.rpcOp
+	if !ok {
+		return nil
+	}
 	put(args.Key, args.Value)
+	kvs.rpcOp <- 1
 	return nil
 }
 
