@@ -39,16 +39,13 @@ type ApplyMsg struct {
 	Snapshot    []byte // ignore for lab2; only used in lab3
 }
 
-//
-// A Go object implementing a single Raft peer.
-//
+// Raft A Go object implementing a single Raft peer.
 type Raft struct {
 	mu        sync.Mutex
 	peers     []*labrpc.ClientEnd
 	persister *Persister
 	me        int // index into peers[]
 
-	id       int
 	state    string
 	isKilled bool
 
@@ -140,7 +137,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		rf.votedFor = args.CandidateID
 	}
 	reply.Term = rf.currentTerm
-	DPrintf("For server %d , term %d, state %s, case vote requested, for %d on term: %d. VoteGranted? %v", rf.id, rf.currentTerm, rf.state, args.CandidateID, args.Term, reply.VoteGranted)
+	DPrintf("For server %d , term %d, state %s, case vote requested, for %d on term: %d. VoteGranted? %v", rf.me, rf.currentTerm, rf.state, args.CandidateID, args.Term, reply.VoteGranted)
 
 	rf.mu.Unlock()
 }
@@ -149,7 +146,7 @@ func (rf *Raft) sendRequestVote(server int, voteChan chan int, args *RequestVote
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	if !ok {
 		rf.mu.Lock()
-		DPrintf("For server %d , term %d, state %s, case RequestVote failed", rf.id, rf.currentTerm, rf.state)
+		DPrintf("For server %d , term %d, state %s, case RequestVote failed", rf.me, rf.currentTerm, rf.state)
 		rf.mu.Unlock()
 	}
 	voteChan <- server
@@ -190,7 +187,7 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
 	if !ok {
 		rf.mu.Lock()
-		DPrintf("For server %d , term %d, state %s, case AppendEntries failed", rf.id, rf.currentTerm, rf.state)
+		DPrintf("For server %d , term %d, state %s, case AppendEntries failed", rf.me, rf.currentTerm, rf.state)
 		rf.mu.Unlock()
 	}
 }
@@ -229,7 +226,7 @@ func (rf *Raft) Kill() {
 	rf.mu.Lock()
 
 	rf.isKilled = true
-	DPrintf("For server %d , term %d, state %s, case killed", rf.id, rf.currentTerm, rf.state)
+	DPrintf("For server %d , term %d, state %s, case killed", rf.me, rf.currentTerm, rf.state)
 
 	rf.mu.Unlock()
 }
@@ -251,11 +248,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 		peers:     peers,
 		persister: persister,
 		me:        me,
-		id:        me,
 		state:     "Follower",
 	}
 
-	DPrintf("For server %d , term %d, state %s, case created", rf.id, rf.currentTerm, rf.state)
+	DPrintf("For server %d , term %d, state %s, case created", rf.me, rf.currentTerm, rf.state)
 
 	rf.readPersist(persister.ReadRaftState())
 
@@ -277,7 +273,7 @@ func (rf *Raft) electionTimer() {
 	defer rf.mu.Unlock()
 	// Start election
 	if rf.state != "Leader" && currentTime.Sub(rf.lastHeartBeat) >= timeout {
-		DPrintf("For server %d , term %d, state %s, case electionTimer timed out, value = %fs", rf.id, rf.currentTerm, rf.state, timeout.Seconds())
+		DPrintf("For server %d , term %d, state %s, case electionTimer timed out, value = %fs", rf.me, rf.currentTerm, rf.state, timeout.Seconds())
 		go rf.startElection()
 	} else if !rf.isKilled {
 		go rf.electionTimer()
@@ -289,13 +285,13 @@ func (rf *Raft) startElection() {
 	rf.mu.Lock()
 	rf.state = "Candidate"
 	rf.currentTerm++
-	rf.votedFor = rf.id
+	rf.votedFor = rf.me
 
-	DPrintf("For server %d , term %d, state %s, case election started", rf.id, rf.currentTerm, rf.state)
+	DPrintf("For server %d , term %d, state %s, case election started", rf.me, rf.currentTerm, rf.state)
 
 	args := RequestVoteArgs{
 		Term:        rf.currentTerm,
-		CandidateID: rf.id}
+		CandidateID: rf.me}
 	resps := make([]RequestVoteReply, len(rf.peers))
 
 	// Reset election timer in case of split vote
@@ -325,15 +321,15 @@ func (rf *Raft) startElection() {
 
 	// Ensure that we're still a candidate and that another election did not start
 	if rf.state == "Candidate" && args.Term == rf.currentTerm {
-		DPrintf("For server %d , term %d, state %s,  case election results, got %d out of %d votes", rf.id, rf.currentTerm, rf.state, votes, len(rf.peers))
+		DPrintf("For server %d , term %d, state %s,  case election results, got %d out of %d votes", rf.me, rf.currentTerm, rf.state, votes, len(rf.peers))
 		// If majority vote, become leader
 		if votes > len(rf.peers)/2 {
 			rf.state = "Leader"
-			rf.leaderID = rf.id
+			rf.leaderID = rf.me
 			go rf.heartbeatTimer()
 		}
 	} else {
-		DPrintf("For server %d , term %d, state %s, case election interupted, for term %d", rf.id, rf.currentTerm, rf.state, args.Term)
+		DPrintf("For server %d , term %d, state %s, case election interupted, for term %d", rf.me, rf.currentTerm, rf.state, args.Term)
 	}
 	rf.mu.Unlock()
 }
@@ -344,10 +340,10 @@ func (rf *Raft) sendHeartbeats() {
 	// Heartbeat message
 	args := AppendEntriesArgs{
 		Term:     rf.currentTerm,
-		LeaderID: rf.id}
+		LeaderID: rf.me}
 	resps := make([]AppendEntriesReply, len(rf.peers))
 
-	DPrintf("For server %d , term %d, state %s, case sending heartbeat", rf.id, rf.currentTerm, rf.state)
+	DPrintf("For server %d , term %d, state %s, case sending heartbeat", rf.me, rf.currentTerm, rf.state)
 
 	// Attempt to send heartbeats to all peers
 	for i := range rf.peers {
