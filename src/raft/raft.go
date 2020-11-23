@@ -1,6 +1,8 @@
 package raft
 
 import (
+	"bytes"
+	"encoding/gob"
 	"labrpc"
 	"math/rand"
 	"sync"
@@ -134,31 +136,46 @@ func (rf *Raft) sendRequestVote(server int, voteChan chan int, args *RequestVote
 
 // --- Persistence ---
 
+// PersistanceData is the data to be persisted
+type PersistanceData struct {
+	CurrentTerm int
+	Log         []Log
+	VotedFor    int
+}
+
 // Persist save Raft's persistent state to stable storage,
 // where it can later be retrieved after a crash and restart.
 // see paper's Figure 2 for a description of what should be persistent.
 func (rf *Raft) persist() {
 	// Your code here (2C).
 	// Example:
-	// w := new(bytes.Buffer)
-	// e := gob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// data := w.Bytes()
-	// rf.persister.SaveRaftState(data)
+	w := new(bytes.Buffer)
+	e := gob.NewEncoder(w)
+	e.Encode(PersistanceData{
+		CurrentTerm: rf.currentTerm,
+		Log:         rf.log,
+		VotedFor:    rf.votedFor,
+	})
+	data := w.Bytes()
+	rf.persister.SaveRaftState(data)
+	DPrintf("For server %d , term %d, case data persisted", rf.me, rf.currentTerm)
 }
 
 // readPersist restore previously persisted state.
 func (rf *Raft) readPersist(data []byte) {
 	// Your code here (2C).
 	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := gob.NewDecoder(r)
-	// d.Decode(&rf.xxx)
-	// d.Decode(&rf.yyy)
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
+	r := bytes.NewBuffer(data)
+	d := gob.NewDecoder(r)
+	readData := PersistanceData{}
+	d.Decode(&readData)
+	rf.currentTerm = readData.CurrentTerm
+	rf.log = readData.Log
+	rf.votedFor = readData.VotedFor
+	DPrintf("For server %d, term %d, case read persisted data", rf.me, rf.currentTerm)
 }
 
 // Kill - the tester calls Kill() when a Raft instance won't be needed again.
@@ -185,8 +202,10 @@ type AppendEntriesArgs struct {
 
 // AppendEntriesReply - RPC response
 type AppendEntriesReply struct {
-	Term    int
-	Success bool
+	Term                int
+	Success             bool
+	ConflictingLogTerm  int // Term of the conflicting entry, if any
+	ConflictingLogIndex int // First index of the log for the above conflicting term
 }
 
 // AppendEntries - RPC function
@@ -211,10 +230,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	// Try to find supplied previous log entry match in our log
 	prevLogIndex := -1
-	for i, v := range rf.log {
-		if v.Index == args.PrevLogIndex && v.Term == args.PrevLogTerm {
-			prevLogIndex = i
-			break
+	for i, entry := range rf.log {
+		if entry.Index == args.PrevLogIndex {
+			if entry.Term == args.PrevLogTerm {
+				prevLogIndex = i
+				break
+			} else {
+				reply.ConflictingLogTerm = entry.Term
+			}
 		}
 	}
 
@@ -252,31 +275,24 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		}
 		reply.Success = true
 	} else {
+		// 5.3
+		if reply.ConflictingLogTerm == 0 && len(rf.log) > 0 {
+			reply.ConflictingLogTerm = rf.log[len(rf.log)-1].Term
+		}
+
+		for _, entry := range rf.log {
+			if entry.Term == reply.ConflictingLogTerm {
+				reply.ConflictingLogIndex = entry.Index
+				break
+			}
+		}
 		reply.Success = false
 	}
+	rf.persist()
 }
 func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
 	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
 	return ok
-}
-
-// updateCommitIndex updates commit index if there's an N greater than commit index
-func (rf *Raft) updateCommitIndex() {
-	for i := len(rf.log) - 1; i >= 0; i-- {
-		if v := rf.log[i]; v.Term == rf.currentTerm && v.Index > rf.commitIndex {
-			replicationCount := 1
-			for j := range rf.peers {
-				if j != rf.me && rf.matchIndex[j] >= v.Index {
-					if replicationCount++; replicationCount > len(rf.peers)/2 { // Check to see if majority of nodes have replicated this
-						rf.commitIndex = v.Index // Set index of this entry as new commit index
-						break
-					}
-				}
-			}
-		} else {
-			break
-		}
-	}
 }
 
 //Start agreement on a new log entry
@@ -528,6 +544,25 @@ func (rf *Raft) sendAppendEntriesHelper(server int, sendAppendChan chan struct{}
 				rf.nextIndex[server]--
 			}
 			sendAppendChan <- struct{}{} // Signals to leader-peer process that appends need to occur
+		}
+	}
+}
+
+// updateCommitIndex updates commit index if there's an N greater than commit index
+func (rf *Raft) updateCommitIndex() {
+	for i := len(rf.log) - 1; i >= 0; i-- {
+		if v := rf.log[i]; v.Term == rf.currentTerm && v.Index > rf.commitIndex {
+			replicationCount := 1
+			for j := range rf.peers {
+				if j != rf.me && rf.matchIndex[j] >= v.Index {
+					if replicationCount++; replicationCount > len(rf.peers)/2 { // Check to see if majority of nodes have replicated this
+						rf.commitIndex = v.Index // Set index of this entry as new commit index
+						break
+					}
+				}
+			}
+		} else {
+			break
 		}
 	}
 }
