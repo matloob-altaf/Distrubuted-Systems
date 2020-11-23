@@ -387,6 +387,7 @@ func (rf *Raft) startElection() {
 			go rf.sendRequestVote(i, voteChan, &args, &replies[i])
 		}
 	}
+	rf.persist()
 	rf.mu.Unlock()
 
 	// Count votes
@@ -546,6 +547,7 @@ func (rf *Raft) sendAppendEntriesHelper(server int, sendAppendChan chan struct{}
 			sendAppendChan <- struct{}{} // Signals to leader-peer process that appends need to occur
 		}
 	}
+	rf.persist()
 }
 
 // updateCommitIndex updates commit index if there's an N greater than commit index
