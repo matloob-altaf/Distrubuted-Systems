@@ -137,7 +137,9 @@ func (kv *RaftKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 func (kv *RaftKV) Kill() {
 	kv.rf.Kill()
 	// Your code here, if desired.
+	kv.mu.Lock()
 	kv.isKilled = true
+	kv.mu.Unlock()
 }
 
 //
@@ -176,7 +178,10 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 func (kv *RaftKV) startApplyProcess() {
 	DPrintf("Starting apply process")
-	for !kv.isKilled {
+	kv.mu.Lock()
+	isKilled := kv.isKilled
+	kv.mu.Unlock()
+	for !isKilled {
 		select {
 		case msg := <-kv.applyCh:
 			kv.mu.Lock()
@@ -200,9 +205,11 @@ func (kv *RaftKV) startApplyProcess() {
 			if request, isPresent := kv.requestHandlers[msg.Index]; isPresent {
 				request <- msg // TODO: Should probably send value if Get, likely false linearizability due to race conditions
 			}
-
 			kv.mu.Unlock()
 		}
+		kv.mu.Lock()
+		isKilled = kv.isKilled
+		kv.mu.Unlock()
 	}
 }
 

@@ -3,14 +3,11 @@ Test: One client ...
 Test: concurrent clients ...
   ... Passed
 Test: unreliable ...
-2020/12/06 05:23:47 Warning: client 0 managed to perform only 8 put operations in 1 sec?
-2020/12/06 05:23:54 Warning: client 3 managed to perform only 9 put operations in 1 sec?
-2020/12/06 05:24:00 Warning: client 0 managed to perform only 9 put operations in 1 sec?
-2020/12/06 05:24:00 Warning: client 1 managed to perform only 8 put operations in 1 sec?
-2020/12/06 05:24:00 Warning: client 3 managed to perform only 6 put operations in 1 sec?
-2020/12/06 05:24:01 Warning: client 4 managed to perform only 8 put operations in 1 sec?
+2020/12/06 05:49:45 Warning: client 2 managed to perform only 6 put operations in 1 sec?
+2020/12/06 05:49:51 Warning: client 1 managed to perform only 8 put operations in 1 sec?
+2020/12/06 05:49:57 Warning: client 2 managed to perform only 8 put operations in 1 sec?
   ... Passed
 Test: Concurrent Append to same key, unreliable ...
   ... Passed
 PASS
-ok  	kvraft	55.654s
+ok  	kvraft	54.965s
